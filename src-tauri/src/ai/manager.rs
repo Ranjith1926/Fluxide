@@ -214,8 +214,8 @@ impl AiManager {
         let threads = std::thread::available_parallelism()
             .map(|n| n.get().min(8)).unwrap_or(4).to_string();
 
-        Command::new(&binary)
-            .args([
+        let mut cmd = Command::new(&binary);
+        cmd.args([
                 "--model",    model_path.to_str().unwrap_or_default(),
                 "--port",     &LLAMA_SERVER_PORT.to_string(),
                 "--host",     "127.0.0.1",
@@ -224,7 +224,19 @@ impl AiManager {
                 "--threads",  &threads,
                 "--batch-size","512",
             ])
-            .spawn()
+            // The server logs are noisy and irrelevant to the user; discard them.
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+
+        // On Windows, spawning a console-subsystem binary from the GUI app pops up
+        // its own console window. CREATE_NO_WINDOW (0x0800_0000) suppresses it.
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000);
+        }
+
+        cmd.spawn()
             .map_err(|e| anyhow!("Failed to spawn {:?}: {}", binary, e))
     }
 
@@ -235,7 +247,14 @@ impl AiManager {
         if app_bin.exists() { return Ok(app_bin); }
 
         let which = if cfg!(windows) { "where" } else { "which" };
-        if let Ok(out) = Command::new(which).arg(bin).output() {
+        let mut which_cmd = Command::new(which);
+        which_cmd.arg(bin);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            which_cmd.creation_flags(0x0800_0000);
+        }
+        if let Ok(out) = which_cmd.output() {
             if out.status.success() {
                 let s = String::from_utf8_lossy(&out.stdout).trim()
                     .lines().next().unwrap_or("").to_string();
