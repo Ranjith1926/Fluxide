@@ -84,6 +84,36 @@ export function Terminal({ sessionId, isActive }: TerminalProps) {
       writeToSession(sessionId, data).catch(() => {});
     });
 
+    // Clipboard: Ctrl+V / Ctrl+Shift+V to paste, Ctrl+C to copy a selection
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type !== "keydown") return true;
+
+      // Paste — preventDefault stops the webview's native paste so we don't
+      // write the clipboard text twice (native paste + this manual read).
+      if (e.ctrlKey && (e.key === "v" || e.key === "V")) {
+        e.preventDefault();
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            if (text) writeToSession(sessionId, text).catch(() => {});
+          })
+          .catch(() => {});
+        return false;
+      }
+
+      // Copy selection (only when text is selected, so Ctrl+C still
+      // sends SIGINT when nothing is selected)
+      if (e.ctrlKey && (e.key === "c" || e.key === "C")) {
+        const selection = term.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection).catch(() => {});
+          return false;
+        }
+      }
+
+      return true;
+    });
+
     // Listen for terminal output from Rust
     const unlisten = listen<{ data: string }>(
       `terminal-output-${sessionId}`,

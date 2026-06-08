@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { TerminalSession } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 import { generateId } from "@/services/utils";
+import { useFileStore } from "@/store/fileStore";
 
 interface TerminalState {
   sessions: TerminalSession[];
@@ -22,11 +23,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   createSession: async (cwd?: string) => {
     try {
-      const backendId = await invoke<string>("create_terminal", { cwd: cwd ?? null });
+      // Default to the open workspace folder so terminals start inside the
+      // project (matches the panel's "+" button) instead of the home dir.
+      const resolvedCwd = cwd ?? useFileStore.getState().workspacePath ?? null;
+      const backendId = await invoke<string>("create_terminal", { cwd: resolvedCwd });
       const session: TerminalSession = {
         id: backendId,
-        title: cwd ? cwd.split(/[/\\]/).pop() ?? "Terminal" : "Terminal",
-        cwd,
+        title: resolvedCwd ? resolvedCwd.split(/[/\\]/).pop() ?? "Terminal" : "Terminal",
+        cwd: resolvedCwd ?? undefined,
         active: true,
       };
 
