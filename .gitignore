@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+src-tauri/target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Tauri
+src-tauri/WixTools/
+src-tauri/gen/
+
+# Models (large files)
+src-tauri/resources/models/
+*.gguf
+*.bin
+
+# Rust
+src-tauri/target/
+
+# TypeScript
+*.tsbuildinfo
